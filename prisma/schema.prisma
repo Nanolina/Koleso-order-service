@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model CustomerOrder {
+  id                  String        @id @default(uuid())
+  customerOrderNumber String
+  userId              String
+  totalCost           Float
+  deliveryId          String
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @default(now())
+  delivery            Delivery      @relation(fields: [deliveryId], references: [id])
+  sellerOrders        SellerOrder[]
+}
+
+model SellerOrder {
+  id                          String                       @id @default(uuid())
+  sellerOrderNumber           String
+  customerOrderId             String
+  storeId                     String
+  totalCost                   Float
+  status                      OrderStatusType
+  customerOrder               CustomerOrder                @relation(fields: [customerOrderId], references: [id])
+  sellerOrderItems            SellerOrderItem[]
+  sellerOrderStatusChangeLogs SellerOrderStatusChangeLog[]
+}
+
+model SellerOrderItem {
+  id                              String                           @id @default(uuid())
+  sellerOrderId                   String
+  productId                       String
+  quantity                        Int
+  price                           Float
+  status                          OrderStatusType
+  createdAt                       DateTime                         @default(now())
+  updatedAt                       DateTime                         @default(now())
+  returns                         Return[]
+  sellerOrder                     SellerOrder                      @relation(fields: [sellerOrderId], references: [id])
+  sellerOrderItemStatusChangeLogs SellerOrderItemStatusChangeLog[]
+}
+
+model Delivery {
+  id             String             @id @default(uuid())
+  deliveryMethod DeliveryMethodType
+  addressId      String
+  notes          String?
+  userId         String
+  customerOrders CustomerOrder[]
+  returns        Return[]
+}
+
+model Return {
+  id                     String                  @id @default(uuid())
+  returnNumber           String
+  sellerOrderItemId      String
+  quantity               Int
+  deliveryId             String
+  reason                 ReturnReasonType
+  photos                 String[]
+  comment                String?
+  refundAmount           Float
+  refundStatus           RefundStatusType
+  refundNotes            String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @default(now())
+  delivery               Delivery                @relation(fields: [deliveryId], references: [id])
+  sellerOrderItem        SellerOrderItem         @relation(fields: [sellerOrderItemId], references: [id])
+  returnStatusChangeLogs ReturnStatusChangeLog[]
+}
+
+model SellerOrderStatusChangeLog {
+  id             String          @id @default(uuid())
+  sellerOrderId  String
+  previousStatus OrderStatusType
+  newStatus      OrderStatusType
+  changedBy      String
+  changedAt      DateTime        @default(now())
+  sellerOrder    SellerOrder     @relation(fields: [sellerOrderId], references: [id])
+}
+
+model SellerOrderItemStatusChangeLog {
+  id                String          @id @default(uuid())
+  sellerOrderItemId String
+  previousStatus    OrderStatusType
+  newStatus         OrderStatusType
+  changedBy         String
+  changedAt         DateTime        @default(now())
+  sellerOrderItem   SellerOrderItem @relation(fields: [sellerOrderItemId], references: [id])
+}
+
+model ReturnStatusChangeLog {
+  id             String           @id @default(uuid())
+  returnId       String
+  previousStatus RefundStatusType
+  newStatus      RefundStatusType
+  changedBy      String
+  changedAt      DateTime         @default(now())
+  return         Return           @relation(fields: [returnId], references: [id])
+}
+
+enum OrderStatusType {
+  AwaitingProcessing
+  InProcess
+  ReadyToShip
+  Shipped
+  Delivered
+  Canceled
+  Rejection
+  PendingRefund
+  Return
+  Returned
+  PendingPayment
+}
+
+enum RefundStatusType {
+  Pending
+  Processing
+  TransferredToCard
+  Completed
+  Denied
+  Canceled
+}
+
+enum DeliveryMethodType {
+  Courier
+  PickupPoint
+}
+
+enum ReturnReasonType {
+  DidntFit
+  BadQuality
+  WarrantyCase
+  WrongItem
+  OrderError
+  NotAsDescribed
+}
